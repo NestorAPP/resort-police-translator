@@ -4,10 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resort Police Translator</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#16213e">
+    
+    <!-- iOS PWA meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Police Translator">
+    <!-- apple-touch-icon добавим позже, когда будут иконки -->
 </head>
 <body>
-    <h1>Translator Scaffold</h1>
+    <h1>Resort Police Translator</h1>
     <p>Языки: RU ↔ EN / TR / ZH / AR / DE</p>
-    <p>Репозиторий создан. Хостинг готов. Следующий шаг — подключение Transformers.js.</p>
+    
+    <div id="app">
+        <textarea id="input" rows="3" placeholder="Введите текст на русском..."></textarea>
+        <br>
+        <select id="target-lang">
+            <option value="en">English</option>
+            <option value="tr">Türkçe</option>
+            <option value="zh">中文</option>
+            <option value="ar">العربية</option>
+            <option value="de">Deutsch</option>
+        </select>
+        <button id="translate-btn">Перевести</button>
+        <div id="output" style="margin-top: 1em; font-size: 1.2em; min-height: 2em;"></div>
+        <div id="status" style="color: gray; font-size: 0.9em;"></div>
+    </div>
+
+    <script type="module" src="translator.js"></script>
 </body>
 </html>
