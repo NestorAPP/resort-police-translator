@@ -1,7 +1,7 @@
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-// Отключаем локальные модели — грузим с Hugging Face CDN
 env.allowLocalModels = false;
+// env.useBrowserCache = true; // это значение по умолчанию, можно не писать
 
 const statusEl = document.getElementById('status');
 const outputEl = document.getElementById('output');
@@ -9,50 +9,46 @@ const inputEl = document.getElementById('input');
 const targetSelect = document.getElementById('target-lang');
 const btn = document.getElementById('translate-btn');
 
-// Кэш пайплайнов: ru→en, en→tr, en→zh, en→ar, en→de
 const pipes = {};
 
-async function getPipe(modelId) {
-    if (pipes[modelId]) return pipes[modelId];
-    statusEl.textContent = `Загрузка модели ${modelId}... (первый раз может занять время)`;
-    pipes[modelId] = await pipeline('translation', modelId);
-    statusEl.textContent = 'Модель загружена';
-    return pipes[modelId];
-}
+// Функция предзагрузки — вызывается сразу при старте
+async function preloadModels() {
+    const modelsToPreload = [
+        'Xenova/opus-mt-ru-en',
+        'Xenova/opus-mt-en-zh',
+        'Xenova/opus-mt-en-ar',
+        'Xenova/opus-mt-en-de'
+        // турецкий пока пропускаем, если нет модели
+    ];
 
-async function translate(text, targetLang) {
-    // Шаг 1: RU → EN (всегда)
-    const ruEn = await getPipe('Xenova/opus-mt-ru-en');
-    const enResult = await ruEn(text, { max_length: 512 });
-    const englishText = enResult[0].translation_text;
-
-    // Если целевой язык английский — возвращаем
-    if (targetLang === 'en') return englishText;
-
-    // Шаг 2: EN → target
-    const modelMap = {
-        tr: 'Xenova/opus-mt-en-tr', // примечание: проверьте наличие на HF
-        zh: 'Xenova/opus-mt-en-zh',
-        ar: 'Xenova/opus-mt-en-ar',
-        de: 'Xenova/opus-mt-en-de'
-    };
-    const targetModel = modelMap[targetLang];
-    if (!targetModel) throw new Error(`Нет модели для ${targetLang}`);
-
-    const enTarget = await getPipe(targetModel);
-    const targetResult = await enTarget(englishText, { max_length: 512 });
-    return targetResult[0].translation_text;
-}
-
-btn.addEventListener('click', async () => {
-    const text = inputEl.value.trim();
-    if (!text) return;
-    const target = targetSelect.value;
-    try {
-        outputEl.textContent = '...';
-        const result = await translate(text, target);
-        outputEl.textContent = result;
-    } catch (e) {
-        outputEl.textContent = 'Ошибка: ' + e.message;
+    for (const modelId of modelsToPreload) {
+        if (pipes[modelId]) continue;
+        
+        statusEl.textContent = `Подготовка модели: ${modelId}...`;
+        statusEl.style.color = 'orange';
+        
+        try {
+            pipes[modelId] = await pipeline('translation', modelId, {
+                progress_callback: (data) => {
+                    if (data.status === 'progress') {
+                        statusEl.textContent = `Загрузка ${modelId}: ${Math.round(data.progress)}%`;
+                    }
+                }
+            });
+            statusEl.textContent = `Модель ${modelId} готова`;
+            statusEl.style.color = 'green';
+        } catch (e) {
+            console.error(`Ошибка загрузки ${modelId}:`, e);
+            statusEl.textContent = `Ошибка загрузки ${modelId}. Проверьте интернет.`;
+            statusEl.style.color = 'red';
+            // Не прерываем загрузку остальных моделей
+        }
     }
-});
+    statusEl.textContent = 'Все модели готовы к работе (офлайн)';
+    statusEl.style.color = 'green';
+}
+
+// Запускаем предзагрузку сразу при открытии
+preloadModels();
+
+// ... остальной код translate() и обработчик кнопки остаются как были
